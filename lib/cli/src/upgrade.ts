@@ -9,6 +9,7 @@ import {
 } from './js-package-manager';
 import { commandLog } from './helpers';
 import { automigrate } from './automigrate';
+import { isStorybookInstalled } from './detect';
 
 type Package = {
   package: string;
@@ -152,6 +153,14 @@ export const upgrade = async ({
   ...options
 }: UpgradeOptions) => {
   const packageManager = JsPackageManagerFactory.getPackageManager(useNpm);
+  const packageJson = packageManager.retrievePackageJson();
+
+  if (!isStorybookInstalled(packageJson)) {
+    commandLog(
+      `There's no Storybook installed in the current directory: ${process.cwd()}\nAre you running the command in the correct directory?\n`
+    );
+    process.exit(0);
+  }
 
   commandLog(`Checking for latest versions of '@storybook/*' packages`);
   if (!options.disableTelemetry) {
@@ -162,7 +171,7 @@ export const upgrade = async ({
   if (!dryRun) flags.push('--upgrade');
   flags.push('--target');
   flags.push(prerelease ? 'greatest' : 'latest');
-  flags = addExtraFlags(EXTRA_FLAGS, flags, packageManager.retrievePackageJson());
+  flags = addExtraFlags(EXTRA_FLAGS, flags, packageJson);
   const check = spawnSync('npx', ['npm-check-updates@latest', '/storybook/', ...flags], {
     stdio: 'pipe',
   }).output.toString();
